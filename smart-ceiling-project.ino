@@ -1,7 +1,7 @@
 // The following is a simple stepper motor control procedures
 # define EN 8 // stepper motor enable , active low
-# define Y_DIR 6 // y -axis stepper motor direction control
-# define Y_STP 3 // y -axis stepper control
+# define Y_DIR 7 // y -axis stepper motor direction control
+# define Y_STP 4 // y -axis stepper control
 
 #include <SoftwareSerial.h>   //Software Serial Port
 #define RxD 2
@@ -9,18 +9,24 @@
 
 SoftwareSerial BLE(RxD, TxD);
 
-
-int stepCount = 200;
+int stepCount = 500;
 //bool flag for step motor
 boolean turned = false;
+boolean systemPosition = true;
+ boolean numberIsNegative = false;
 
 #define DEBUG_ENABLED  1
-
 
 /*
   / / Function : step . function: to control the direction of the stepper motor , the number of steps .
   / / Parameters : dir direction control , dirPin corresponding stepper motor DIR pin , stepperPin corresponding stepper motor " step " pin , Step number of step of no return value.
 */
+
+float  GetValue(String pString){
+  char vTempValue[10];
+  pString.toCharArray(vTempValue,sizeof(vTempValue));
+  return  atof(vTempValue);
+}
 
 void step (boolean dir, byte dirPin, byte stepperPin, int steps)
 {
@@ -46,41 +52,38 @@ void setup () {   // The stepper motor used in the IO pin is set to output
   //FOR STEP MOTOR
   pinMode (Y_DIR, OUTPUT); pinMode (Y_STP, OUTPUT);
   pinMode (EN, OUTPUT);
-  digitalWrite (EN, LOW);
+  digitalWrite (EN, HIGH);
 }
 
 void loop () {
-  //STEP MOTOR
+  //STEP MOTOR  
   
   //FOR BLUETOOTH SHIELD
   char recvChar;
   String recvString;
   
   while (1) {
+     digitalWrite(EN,HIGH);
     if (BLE.available()) { //check if there's any data sent from the remote BLE shield
       recvString = BLE.readString();
-      Serial.print(recvChar);
-      if (recvString == "up"){
-        Serial.print("up");
-        BLE.write("up");
-          step (true, Y_DIR, Y_STP, stepCount); // y axis motor reverse 1 ring, the 200 step is a circle.
-      }
-      if (recvString == "down"){
-        Serial.print("down");
-        BLE.write("down");
-          step (false, Y_DIR, Y_STP, stepCount); // y axis motor reverse 1 ring, the 200 step is a circle.
-      }
-    }
-    if (Serial.available()) { //check if there's any data sent from the local serial terminal, you can add the other applications here
-      recvChar  = Serial.read();
+      recvChar = BLE.read();
 
-      BLE.print(recvChar);
-    }
+      int recvStringInt = recvString.toInt();
+      float n =  GetValue(recvString);
+
+      
+           if (n > 0) {
+              digitalWrite(EN,LOW);
+              BLE.write("up");
+              step (true, Y_DIR, Y_STP, n); // y axis motor reverse 1 ring, the 200 step is a circle.
+            } else {
+              digitalWrite(EN,LOW);
+              BLE.write("down");
+              step (false, Y_DIR, Y_STP, -n); // y axis motor reverse 1 ring, the 200 step is a circle.
+              
+          }
+      }
   }
-  //step (true, Y_DIR, Y_STP, 200); // y axis motor forward 1 laps, the 200 step is a circle.
-  //delay (1000);
-  //bleshield();
-
 }
 
 void setupBleConnection() {
